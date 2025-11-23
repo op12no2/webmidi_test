@@ -139,7 +139,7 @@ async function playSimpleSequence() {
   }
   
   clearSequenceDisplay();
-  logSequence('Starting Simple Progression: I-IV-V-I in C Major');
+  logSequence('Starting Seq');
   
   const root = 60; // C4
   const channel = 1;
@@ -172,14 +172,14 @@ async function playSimpleSequence() {
   logSequence('✓ Sequence complete');
 }
 
-async function playJazzSequence() {
+async function playSimpleSequence2() {
   if (!selectedOutput) {
     log('✗ No output selected');
     return;
   }
   
   clearSequenceDisplay();
-  logSequence('Starting Jazz Progression: ii-V-I in C Major');
+  logSequence('Starting Seq');
   
   const root = 60; // C4
   const channel = 1;

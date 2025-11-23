@@ -1,12 +1,12 @@
-# Web MIDI test
+# Web MIDI playground
 
-Test connecting the browser to Bitwig using Web MIDI and using Javascript to control it.
+A little Web MIDI playground for testing and evaluating connecting a browser to a DAW and using Javascript to control it.
 
-### Windows
+In my case I used Windows and Bitwig.
 
-Create a virtual MIDI port using loopMIDI.
-Start Bitwig which auto-detects the port as a controller. Or at least it did in my case; you may need to add it manually.
-Start the test here: https://op12no2.github.io/web_midi_test/ 
+- Create a virtual MIDI port using loopMIDI.
+- Start Bitwig which auto-detects the port as a controller. Or at least it did in my case; you may need to add it manually.
+- Start the playground: https://op12no2.github.io/web_midi_test/ 
 
 ### Links
 

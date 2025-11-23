@@ -15,21 +15,23 @@ function updateStatus() {
   const indicator = document.getElementById('statusIndicator');
   if (bitwigPort) {
     indicator.classList.add('active');
-  } else {
+  } 
+  else {
     indicator.classList.remove('active');
   }
 }
 
 async function initMIDI() {
-  try  {
+  try {
     midiAccess = await navigator.requestMIDIAccess({ sysexEnabled: true });
     log('✓ MIDI access granted');
   
     // Check if SysEx was actually enabled
     if (midiAccess.sysexEnabled) {
       log('✓ SysEx enabled');
-    } else {
-      log('⚠ SysEx NOT enabled - browser may have denied permission');
+    } 
+    else {
+      log('⚠ SysEx NOT enabled - browser may have denied permission (ignore)');
     }
   
     const outputs = midiAccess.outputs.values();
@@ -40,7 +42,8 @@ async function initMIDI() {
     bitwigPort = await getBitwigPort(midiAccess);
     updateStatus();
     return midiAccess;
-  } catch (err) {
+  } 
+  catch (err) {
     log('✗ MIDI access denied: ' + err);
     updateStatus();
   }
@@ -198,39 +201,40 @@ function releaseAllChordNotes() {
   log('→ Released all active notes');
 }
 
-function sendMMC(command) {
+function sendPlay() {
   if (!bitwigPort) {
     log('Port not initialized');
     return;
   }
-  const mmc = [0xF0, 0x7F, 0x00, 0x06, 0x01, command, 0xF7];
-  log(`Sending MMC: ${mmc}`); 
-  try {
-    bitwigPort.send(mmc);
-    log('MMC sent successfully');
-  } catch (err) {
-    log('✗ MMC Error: ' + err.message);
-  }
-}
-
-function sendPlay() {
-  sendMMC(0x02);
-  log('→ Transport: PLAY');
+  bitwigPort.send([0xFA]);  // MIDI Start
+  log('→ Transport: START');
 }
 
 function sendStop() {
-  sendMMC(0x01);
+  if (!bitwigPort) {
+    log('Port not initialized');
+    return;
+  }
+  bitwigPort.send([0xFC]);  // MIDI Stop
   log('→ Transport: STOP');
 }
 
 function sendPause() {
-  sendMMC(0x09);
-  log('→ Transport: PAUSE');
+  if (!bitwigPort) {
+    log('Port not initialized');
+    return;
+  }
+  bitwigPort.send([0xFB]);  // MIDI Continue (closest to pause)
+  log('→ Transport: CONTINUE');
 }
 
 function sendRecord() {
-  sendMMC(0x06);
-  log('→ Transport: RECORD');
+  if (!bitwigPort) {
+    log('Port not initialized');
+    return;
+  }
+  // No standard MIDI message for record, but some DAWs respond to note on specific channel
+  log('⚠ No standard MIDI record command (use MMC with SysEx)');
 }
 
 // Custom CC

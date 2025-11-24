@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Spatial Sequencer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1a1a1a;
+      font-family: monospace;
+      color: #aaa;
+      overflow: hidden;
+    }
+    
+    #container {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    #midi-status {
+      position: fixed;
+      top: 14px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #888;
+      z-index: 100;
+    }
+    
+    #system-settings-btn {
+      position: fixed;
+      top: 4px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #888;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    #system-settings-btn:hover {
+      background: #3a3a3a;
+      color: #aaa;
+      border-color: #555;
+    }
+    
+    #transport {
+      position: fixed;
+      top: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      z-index: 100;
+    }
+    
+    #bpm-display {
+      position: fixed;
+      top: 4px;
+      left: 50%;
+      transform: translateX(-150px);
+      height: 32px;
+      padding: 0 8px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #888;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: ew-resize;
+      transition: all 0.2s;
+      z-index: 100;
+      user-select: none;
+    }
+    
+    #bpm-display:hover {
+      border-color: #555;
+      color: #aaa;
+    }
+    
+    #bpm-value {
+      font-family: monospace;
+      min-width: 30px;
+      text-align: right;
+    }
+    
+    #edit-mode-btn {
+      position: fixed;
+      top: 4px;
+      right: 46px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #888;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    #edit-mode-btn:hover {
+      background: #3a3a3a;
+      color: #aaa;
+      border-color: #555;
+    }
+    
+    #edit-mode-btn.active {
+      background: #4a6a8a;
+      border-color: #5a7a9a;
+      color: #fff;
+    }
+    
+    .transport-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #888;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .transport-btn:hover {
+      background: #3a3a3a;
+      color: #aaa;
+      border-color: #555;
+    }
+    
+    .transport-btn.active {
+      background: #4a6a8a;
+      border-color: #5a7a9a;
+      color: #fff;
+    }
+    
+    .transport-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    
+    #status-text {
+      transition: opacity 2s ease-out;
+    }
+    
+    #status-text.fade-out {
+      opacity: 0;
+    }
+    
+    .status-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid #333;
+    }
+    
+    .status-light.connected {
+      background: #4a4;
+      box-shadow: 0 0 8px #4a4;
+    }
+    
+    .status-light.disconnected {
+      background: #a44;
+      box-shadow: 0 0 8px #a44;
+      cursor: pointer;
+    }
+    
+    .status-light.disconnected:hover {
+      background: #c55;
+      box-shadow: 0 0 12px #c55;
+    }
+    
+    canvas {
+      border: 1px solid #333;
+      cursor: crosshair;
+    }
+    
+    .context-menu {
+      position: absolute;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 0;
+      min-width: 150px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .context-menu-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .context-menu-item:hover {
+      background: #3a3a3a;
+      color: #fff;
+    }
+    
+    .context-menu-item.danger:hover {
+      background: #662222;
+      color: #ffaaaa;
+    }
+    
+    .context-menu-divider {
+      height: 1px;
+      background: #444;
+      margin: 4px 0;
+    }
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    
+    .modal {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 24px;
+      min-width: 300px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    
+    .modal h3 {
+      margin: 0 0 16px 0;
+      color: #fff;
+      font-size: 18px;
+    }
+    
+    .modal h4 {
+      margin: 16px 0 8px 0;
+      color: #ddd;
+      font-size: 14px;
+      font-weight: 700;
+      border-bottom: 1px solid #444;
+      padding-bottom: 4px;
+    }
+    
+    .modal-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+    
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .modal-row label {
+      flex: 1;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .modal-row input[type="color"] {
+      width: 60px;
+      height: 32px;
+      border: 1px solid #444;
+      background: #1a1a1a;
+      cursor: pointer;
+    }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+    
+    .modal-button {
+      padding: 8px 16px;
+      border: 1px solid #444;
+      background: #3a3a3a;
+      color: #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    
+    .modal-button:hover {
+      background: #4a4a4a;
+      color: #fff;
+    }
+    
+    .modal-button.primary {
+      background: #4a6a8a;
+      border-color: #5a7a9a;
+    }
+    
+    .modal-button.primary:hover {
+      background: #5a7a9a;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="midi-status">
+      <div class="status-light disconnected" id="status-light" title="Click to retry MIDI connection"></div>
+      <span id="status-text">MIDI Disconnected</span>
+    </div>
+    <div id="bpm-display" title="Drag left/right to change BPM">
+      <span>♩</span>
+      <span id="bpm-value">120</span>
+    </div>
+    <div id="transport">
+      <button class="transport-btn" id="play-btn" title="Play">▶</button>
+      <button class="transport-btn" id="pause-btn" title="Pause" disabled>⏸</button>
+      <button class="transport-btn" id="stop-btn" title="Stop" disabled>⏹</button>
+    </div>
+    <button id="edit-mode-btn" class="active" title="Edit Mode (On/Off)">⊙</button>
+    <button id="system-settings-btn">⚙</button>
+    <canvas id="canvas"></canvas>
+  </div>
+  
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    const noteRadius = 8;
+    
+    const notes = new Map(); // key: "x,y" -> note object
+    
+    // Camera state
+    let zoom = 1.0;
+    let panX = 0;
+    let panY = 0;
+    
+    // Pan state
+    let isPanning = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    
+    // Note dragging state
+    let draggedNote = null;
+    let dragStartWorld = null;
+    let draggedNoteOriginalPos = null;
+    
+    // Link creation state
+    let linkingFromNote = null;
+    let linkingMousePos = null;
+    
+    // MIDI state
+    const midi = {
+      access: null,
+      output: null,
+      connected: false,
+      
+      async init() {
+        try {
+          this.access = await navigator.requestMIDIAccess();
+          
+          // Find virtual MIDI port (loopMIDI on Windows, IAC Driver on Mac, or any virtual port)
+          for (const output of this.access.outputs.values()) {
+            const name = output.name.toLowerCase();
+            // Check for common virtual MIDI ports
+            if (name.includes('loopmidi') || 
+                name.includes('loop midi') ||
+                name.includes('iac') ||
+                name.includes('bus') ||
+                name.includes('virtual')) {
+              this.output = output;
+              this.connected = true;
+              console.log('Connected to MIDI port:', output.name);
+              return true;
+            }
+          }
+          
+          // If no virtual port found, try to use the first available output
+          if (this.access.outputs.size > 0) {
+            this.output = this.access.outputs.values().next().value;
+            this.connected = true;
+            console.log('Connected to MIDI port:', this.output.name);
+            return true;
+          }
+          
+          console.warn('No MIDI ports found');
+          return false;
+        }
+        catch (err) {
+          console.error('MIDI initialization failed:', err);
+          return false;
+        }
+      },
+      
+      sendNote(note, velocity, channel = 0) {
+        if (!this.output) return;
+        const status = 0x90 | (channel & 0x0F);
+        this.output.send([status, note & 0x7F, velocity & 0x7F]);
+      },
+      
+      sendNoteOff(note, channel = 0) {
+        if (!this.output) return;
+        const status = 0x80 | (channel & 0x0F);
+        this.output.send([status, note & 0x7F, 0]);
+      },
+      
+      sendCC(cc, value, channel = 0) {
+        if (!this.output) return;
+        const status = 0xB0 | (channel & 0x0F);
+        this.output.send([status, cc & 0x7F, value & 0x7F]);
+      }
+    };
+    
+    // Context menu state
+    let contextMenu = null;
+    let contextMenuNote = null;
+    let contextMenuJustClosed = false;
+    
+    // Transport state
+    let isPlaying = false;
+    let isPaused = false;
+    let editMode = true; // Start with edit mode on
+    
+    // Agents
+    const agents = [];
+    let lastFrameTime = 0;
+    
+    // Settings
+    let settings = {
+      // Graph settings
+      backgroundColor: '#0a0a0a',
+      gridColor: '#1a1a1a',
+      noteColor: '#888888',
+      linkColor: '#cccccc',
+      noteSize: 8,
+      noteShape: 'circle',
+      
+      // System settings
+      gridSpacing: 40,
+      bpm: 120
+    };
+    
+    // Draw different note shapes
+    function drawNoteShape(ctx, x, y, size, shape) {
+      ctx.beginPath();
+      
+      switch(shape) {
+        case 'circle':
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          break;
+          
+        case 'square':
+          ctx.rect(x - size, y - size, size * 2, size * 2);
+          break;
+          
+        case 'diamond':
+          ctx.moveTo(x, y - size);
+          ctx.lineTo(x + size, y);
+          ctx.lineTo(x, y + size);
+          ctx.lineTo(x - size, y);
+          ctx.closePath();
+          break;
+          
+        case 'triangle':
+          const h = size * 1.15; // Slightly taller for better proportions
+          ctx.moveTo(x, y - h);
+          ctx.lineTo(x + size, y + h * 0.5);
+          ctx.lineTo(x - size, y + h * 0.5);
+          ctx.closePath();
+          break;
+          
+        case 'hexagon':
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const px = x + size * Math.cos(angle);
+            const py = y + size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          break;
+          
+        case 'star':
+          for (let i = 0; i < 5; i++) {
+            const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+            const outerX = x + size * Math.cos(angle);
+            const outerY = y + size * Math.sin(angle);
+            
+            const innerAngle = angle + Math.PI / 5;
+            const innerX = x + (size * 0.4) * Math.cos(innerAngle);
+            const innerY = y + (size * 0.4) * Math.sin(innerAngle);
+            
+            if (i === 0) ctx.moveTo(outerX, outerY);
+            else ctx.lineTo(outerX, outerY);
+            ctx.lineTo(innerX, innerY);
+          }
+          ctx.closePath();
+          break;
+      }
+    }
+    
+    // Factory function to create a new note with current settings
+    function createNote(x, y) {
+      return {
+        x: x,
+        y: y,
+        midiNote: 60,
+        noteName: 'C4',
+        channel: 0,
+        duration: 0.25,      // Quarter note in beats
+        velocity: 100,
+        rule: null,
+        links: [],
+        shape: settings.noteShape,
+        color: settings.noteColor,
+        size: settings.noteSize,
+        isStart: false
+      };
+    }
+    
+    // MIDI note conversion utilities
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
+    function midiToNoteName(midi) {
+      const octave = Math.floor(midi / 12) - 1;
+      const note = noteNames[midi % 12];
+      return note + octave;
+    }
+    
+    function noteNameToMIDI(name) {
+      const match = name.match(/^([A-G])(#|b)?(-?\d+)$/);
+      if (!match) return 60; // Default to C4
+      
+      let [, note, accidental, octave] = match;
+      octave = parseInt(octave);
+      
+      let noteIndex = noteNames.indexOf(note);
+      if (noteIndex === -1) return 60;
+      
+      if (accidental === '#') noteIndex++;
+      if (accidental === 'b') noteIndex--;
+      
+      return (octave + 1) * 12 + noteIndex;
+    }
+    
+    // Generate note name options for dropdown
+    function generateNoteOptions() {
+      const options = [];
+      for (let midi = 21; midi <= 108; midi++) { // Piano range A0 to C8
+        options.push({ midi, name: midiToNoteName(midi) });
+      }
+      return options;
+    }
+    
+    // Agent system
+    function spawnAgentsFromStartNotes() {
+      agents.length = 0; // Clear existing agents
+      
+      for (const note of notes.values()) {
+        if (note.isStart && note.links.length > 0) {
+          // Create one agent for EACH link
+          for (const link of note.links) {
+            const targetKey = posKey(link.x, link.y);
+            const targetNote = notes.get(targetKey);
+            
+            if (targetNote) {
+              agents.push({
+                x: note.x,
+                y: note.y,
+                targetX: targetNote.x,
+                targetY: targetNote.y,
+                progress: 0,
+                currentNote: note,
+                targetNote: targetNote,
+                color: note.color || settings.noteColor
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    function updateAgents(deltaTime) {
+      if (isPaused) return;
+      
+      // Speed: gridSpacing pixels per beat
+      // At BPM, one beat = 60000/BPM milliseconds
+      const speed = settings.gridSpacing / (60000 / settings.bpm); // px per ms
+      
+      for (let i = agents.length - 1; i >= 0; i--) {
+        const agent = agents[i];
+        
+        // Calculate TOTAL distance from start to target (not current position to target)
+        const dx = agent.targetX - agent.currentNote.x;
+        const dy = agent.targetY - agent.currentNote.y;
+        const totalDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (totalDistance > 0) {
+          const progressIncrement = (speed * deltaTime) / totalDistance;
+          agent.progress += progressIncrement;
+          
+          if (agent.progress >= 1) {
+            // Reached target note
+            agent.progress = 1;
+            agent.x = agent.targetX;
+            agent.y = agent.targetY;
+            
+            // Trigger MIDI
+            const channel = agent.targetNote.channel || 0;
+            const velocity = agent.targetNote.velocity || 100;
+            const durationBeats = agent.targetNote.duration || 0.25;
+            const durationMs = durationBeats * (60000 / settings.bpm);
+            
+            midi.sendNote(agent.targetNote.midiNote, velocity, channel);
+            setTimeout(() => {
+              midi.sendNoteOff(agent.targetNote.midiNote, channel);
+            }, durationMs);
+            
+            // Pick next target
+            if (agent.targetNote.links.length > 0) {
+              const link = agent.targetNote.links[Math.floor(Math.random() * agent.targetNote.links.length)];
+              const nextKey = posKey(link.x, link.y);
+              const nextNote = notes.get(nextKey);
+              
+              if (nextNote) {
+                agent.currentNote = agent.targetNote;
+                agent.x = agent.targetNote.x;
+                agent.y = agent.targetNote.y;
+                agent.targetX = nextNote.x;
+                agent.targetY = nextNote.y;
+                agent.targetNote = nextNote;
+                agent.progress = 0;
+                agent.color = agent.currentNote.color || settings.noteColor;
+              }
+              else {
+                // Target doesn't exist, remove agent
+                agents.splice(i, 1);
+              }
+            }
+            else {
+              // No more links, remove agent
+              agents.splice(i, 1);
+            }
+          }
+          else {
+            // Interpolate position from START to TARGET
+            agent.x = agent.currentNote.x + (agent.targetX - agent.currentNote.x) * agent.progress;
+            agent.y = agent.currentNote.y + (agent.targetY - agent.currentNote.y) * agent.progress;
+          }
+        }
+      }
+    }
+    
+    function drawAgents() {
+      for (const agent of agents) {
+        const size = 6;
+        
+        // Glowing effect with radial gradient
+        const gradient = ctx.createRadialGradient(agent.x, agent.y, 0, agent.x, agent.y, size);
+        gradient.addColorStop(0, agent.color);
+        gradient.addColorStop(0.5, agent.color + 'aa');
+        gradient.addColorStop(1, agent.color + '00');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(agent.x, agent.y, size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Bright center
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(agent.x, agent.y, size / 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function posKey(x, y) {
+      return `${x},${y}`;
+    }
+    
+    function snapToGrid(x, y) {
+      return {
+        x: Math.round(x / settings.gridSpacing) * settings.gridSpacing,
+        y: Math.round(y / settings.gridSpacing) * settings.gridSpacing
+      };
+    }
+    
+    // Transform screen coordinates to world coordinates
+    function screenToWorld(screenX, screenY) {
+      return {
+        x: (screenX - panX) / zoom,
+        y: (screenY - panY) / zoom
+      };
+    }
+    
+    // Find note at world position (within noteRadius distance)
+    function findNoteAt(worldX, worldY) {
+      for (const note of notes.values()) {
+        const size = note.size || settings.noteSize;
+        const dx = note.x - worldX;
+        const dy = note.y - worldY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= size) {
+          return note;
+        }
+      }
+      return null;
+    }
+    
+    // Find link at world position (within threshold distance to line)
+    function findLinkAt(worldX, worldY) {
+      const threshold = 5; // pixels - reduced to make less sensitive
+      
+      for (const note of notes.values()) {
+        for (let i = 0; i < note.links.length; i++) {
+          const link = note.links[i];
+          const targetKey = posKey(link.x, link.y);
+          const targetNote = notes.get(targetKey);
+          
+          if (targetNote) {
+            // Calculate distance from point to line segment
+            const x1 = note.x;
+            const y1 = note.y;
+            const x2 = targetNote.x;
+            const y2 = targetNote.y;
+            
+            const A = worldX - x1;
+            const B = worldY - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq != 0) {
+              param = dot / lenSq;
+            }
+            
+            // Only accept hits in the middle third of the line (0.33 to 0.67)
+            if (param < 0.33 || param > 0.67) {
+              continue;
+            }
+            
+            let xx, yy;
+            
+            if (param < 0) {
+              xx = x1;
+              yy = y1;
+            }
+            else if (param > 1) {
+              xx = x2;
+              yy = y2;
+            }
+            else {
+              xx = x1 + param * C;
+              yy = y1 + param * D;
+            }
+            
+            const dx = worldX - xx;
+            const dy = worldY - yy;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= threshold) {
+              return { sourceNote: note, linkIndex: i, link: link };
+            }
+          }
+        }
+      }
+      return null;
+    }
+    
+    function showContextMenu(x, y, note) {
+      hideContextMenu();
+      
+      contextMenuNote = note;
+      contextMenu = document.createElement('div');
+      contextMenu.className = 'context-menu';
+      contextMenu.style.left = x + 'px';
+      contextMenu.style.top = y + 'px';
+      
+      // Prevent mousedown from propagating to canvas
+      contextMenu.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      contextMenu.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+      });
+      
+      // Menu items
+      contextMenu.appendChild(createMenuItem('Edit Note', () => {
+        showNoteEditModal(note);
+      }));
+      
+      // Divider
+      const divider = document.createElement('div');
+      divider.className = 'context-menu-divider';
+      contextMenu.appendChild(divider);
+      
+      contextMenu.appendChild(createMenuItem('Delete Note', () => {
+        const key = posKey(note.x, note.y);
+        notes.delete(key);
+      }, true));
+      
+      contextMenu.appendChild(createMenuItem(
+        note.isStart ? 'Remove Start Note' : 'Set as Start Note',
+        () => { note.isStart = !note.isStart; }
+      ));
+      
+      contextMenu.appendChild(createMenuItem('Clear Links', () => {
+        note.links = [];
+      }));
+      
+      document.body.appendChild(contextMenu);
+    }
+    
+    function showLinkContextMenu(x, y, linkData) {
+      hideContextMenu();
+      
+      contextMenu = document.createElement('div');
+      contextMenu.className = 'context-menu';
+      contextMenu.style.left = x + 'px';
+      contextMenu.style.top = y + 'px';
+      
+      // Prevent mousedown from propagating to canvas
+      contextMenu.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      contextMenu.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+      });
+      
+      contextMenu.appendChild(createMenuItem('Delete Link', () => {
+        linkData.sourceNote.links.splice(linkData.linkIndex, 1);
+      }, true));
+      
+      document.body.appendChild(contextMenu);
+    }
+    
+    function hideContextMenu() {
+      if (contextMenu) {
+        document.body.removeChild(contextMenu);
+        contextMenu = null;
+        contextMenuNote = null;
+        contextMenuJustClosed = true;
+        setTimeout(() => { contextMenuJustClosed = false; }, 100);
+      }
+    }
+    
+    // Close context menu on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        hideContextMenu();
+      }
+    });
+    
+    function showSettingsModal() {
+      hideContextMenu();
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      // Prevent all mouse events from propagating
+      overlay.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      overlay.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+      });
+      overlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      
+      // Close color pickers when clicking anywhere in modal
+      modal.addEventListener('click', (e) => {
+        if (e.target.type !== 'color') {
+          document.querySelectorAll('input[type="color"]').forEach(input => input.blur());
+        }
+      });
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Settings';
+      modal.appendChild(title);
+      
+      // Graph section
+      const graphHeading = document.createElement('h4');
+      graphHeading.textContent = 'Graph';
+      modal.appendChild(graphHeading);
+      
+      // Color pickers in 2x2 grid
+      const colorGrid = document.createElement('div');
+      colorGrid.className = 'modal-grid';
+      
+      const bgInput = createColorInput(settings.backgroundColor);
+      const gridInput = createColorInput(settings.gridColor);
+      const linkInput = createColorInput(settings.linkColor);
+      
+      colorGrid.appendChild(createModalRow('Background', bgInput));
+      colorGrid.appendChild(createModalRow('Grid', gridInput));
+      colorGrid.appendChild(createModalRow('Link', linkInput));
+      
+      modal.appendChild(colorGrid);
+      
+      // Grid spacing
+      const spacingRow = document.createElement('div');
+      spacingRow.className = 'modal-row';
+      const spacingLabel = document.createElement('label');
+      spacingLabel.textContent = 'Grid Spacing';
+      const spacingInput = document.createElement('input');
+      spacingInput.type = 'number';
+      spacingInput.min = '10';
+      spacingInput.max = '100';
+      spacingInput.value = settings.gridSpacing;
+      spacingInput.style.width = '60px';
+      spacingInput.style.padding = '4px';
+      spacingInput.style.background = '#1a1a1a';
+      spacingInput.style.border = '1px solid #444';
+      spacingInput.style.color = '#ccc';
+      spacingInput.style.fontFamily = 'monospace';
+      spacingRow.appendChild(spacingLabel);
+      spacingRow.appendChild(spacingInput);
+      modal.appendChild(spacingRow);
+      
+      // Note defaults section
+      const noteHeading = document.createElement('h4');
+      noteHeading.textContent = 'Note Defaults';
+      modal.appendChild(noteHeading);
+      
+      const noteInput = createColorInput(settings.noteColor);
+      modal.appendChild(createModalRow('Color', noteInput));
+      
+      // Note size
+      const sizeRow = document.createElement('div');
+      sizeRow.className = 'modal-row';
+      const sizeLabel = document.createElement('label');
+      sizeLabel.textContent = 'Size';
+      const sizeInput = document.createElement('input');
+      sizeInput.type = 'number';
+      sizeInput.min = '2';
+      sizeInput.max = '20';
+      sizeInput.value = settings.noteSize;
+      sizeInput.style.width = '60px';
+      sizeInput.style.padding = '4px';
+      sizeInput.style.background = '#1a1a1a';
+      sizeInput.style.border = '1px solid #444';
+      sizeInput.style.color = '#ccc';
+      sizeInput.style.fontFamily = 'monospace';
+      sizeRow.appendChild(sizeLabel);
+      sizeRow.appendChild(sizeInput);
+      modal.appendChild(sizeRow);
+      
+      // Note shape
+      const shapeRow = document.createElement('div');
+      shapeRow.className = 'modal-row';
+      const shapeLabel = document.createElement('label');
+      shapeLabel.textContent = 'Shape';
+      const shapeSelect = document.createElement('select');
+      shapeSelect.style.width = '120px';
+      shapeSelect.style.padding = '4px';
+      shapeSelect.style.background = '#1a1a1a';
+      shapeSelect.style.border = '1px solid #444';
+      shapeSelect.style.color = '#ccc';
+      shapeSelect.style.fontFamily = 'monospace';
+      
+      const shapes = ['circle', 'square', 'diamond', 'triangle', 'hexagon', 'star'];
+      shapes.forEach(shape => {
+        const option = document.createElement('option');
+        option.value = shape;
+        option.textContent = shape.charAt(0).toUpperCase() + shape.slice(1);
+        if (shape === settings.noteShape) option.selected = true;
+        shapeSelect.appendChild(option);
+      });
+      
+      shapeRow.appendChild(shapeLabel);
+      shapeRow.appendChild(shapeSelect);
+      modal.appendChild(shapeRow);
+      
+      // Buttons
+      const buttons = document.createElement('div');
+      buttons.className = 'modal-buttons';
+      
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'modal-button';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => {
+        // Close any open color pickers
+        bgInput.blur();
+        gridInput.blur();
+        noteInput.blur();
+        linkInput.blur();
+        document.body.removeChild(overlay);
+      };
+      
+      const applyBtn = document.createElement('button');
+      applyBtn.className = 'modal-button primary';
+      applyBtn.textContent = 'Apply';
+      applyBtn.onclick = () => {
+        // Close any open color pickers
+        bgInput.blur();
+        gridInput.blur();
+        noteInput.blur();
+        linkInput.blur();
+        
+        settings.backgroundColor = bgInput.value;
+        settings.gridColor = gridInput.value;
+        settings.noteColor = noteInput.value;
+        settings.linkColor = linkInput.value;
+        settings.noteSize = parseInt(sizeInput.value);
+        settings.noteShape = shapeSelect.value;
+        settings.gridSpacing = parseInt(spacingInput.value);
+        document.body.removeChild(overlay);
+        render();
+      };
+      
+      buttons.appendChild(cancelBtn);
+      buttons.appendChild(applyBtn);
+      modal.appendChild(buttons);
+      
+      overlay.appendChild(modal);
+      
+      // Click overlay background to close
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+        }
+      });
+      
+      document.body.appendChild(overlay);
+    }
+    
+    // Helper to convert hex colors to proper format for color input
+    function rgbToHex(color) {
+      // If already hex, return as-is
+      if (color.startsWith('#')) {
+        return color;
+      }
+      // Otherwise assume it's already valid
+      return color;
+    }
+    
+    // Helper to create a context menu item
+    function createMenuItem(text, onClick, isDanger = false) {
+      const item = document.createElement('div');
+      item.className = 'context-menu-item' + (isDanger ? ' danger' : '');
+      item.textContent = text;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        onClick();
+        hideContextMenu();
+        render();
+      };
+      return item;
+    }
+    
+    // Helper to create a modal row with label and input
+    function createModalRow(label, input) {
+      const row = document.createElement('div');
+      row.className = 'modal-row';
+      const labelEl = document.createElement('label');
+      labelEl.textContent = label;
+      row.appendChild(labelEl);
+      row.appendChild(input);
+      return row;
+    }
+    
+    // Helper to create a color input
+    function createColorInput(value) {
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = rgbToHex(value);
+      return input;
+    }
+    
+    // Update MIDI status indicator
+    function updateMIDIStatus() {
+      const light = document.getElementById('status-light');
+      const text = document.getElementById('status-text');
+      
+      if (midi.connected) {
+        light.className = 'status-light connected';
+        light.title = 'MIDI Connected';
+        text.textContent = 'MIDI Connected';
+        text.className = ''; // Reset fade
+        
+        // Fade out text after 10 seconds
+        setTimeout(() => {
+          text.classList.add('fade-out');
+        }, 10000);
+      }
+      else {
+        light.className = 'status-light disconnected';
+        light.title = 'Click to retry MIDI connection';
+        text.textContent = 'MIDI Disconnected';
+        text.className = ''; // Keep visible, no fade
+      }
+    }
+    
+    // Initialize MIDI connection
+    async function initMIDI() {
+      await midi.init();
+      updateMIDIStatus();
+    }
+    
+    function showNoteEditModal(note) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      // Prevent all mouse events from propagating
+      overlay.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      overlay.addEventListener('mouseup', (e) => {
+        e.stopPropagation();
+      });
+      overlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      
+      // Close color pickers when clicking anywhere in modal
+      modal.addEventListener('click', (e) => {
+        if (e.target.type !== 'color') {
+          document.querySelectorAll('input[type="color"]').forEach(input => input.blur());
+        }
+      });
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Edit Note';
+      modal.appendChild(title);
+      
+      // MIDI section
+      const midiHeading = document.createElement('h4');
+      midiHeading.textContent = 'MIDI';
+      modal.appendChild(midiHeading);
+      
+      // Pitch/Note name
+      const pitchSelect = document.createElement('select');
+      pitchSelect.style.width = '80px';
+      pitchSelect.style.padding = '4px';
+      pitchSelect.style.background = '#1a1a1a';
+      pitchSelect.style.border = '1px solid #444';
+      pitchSelect.style.color = '#ccc';
+      pitchSelect.style.fontFamily = 'monospace';
+      
+      const noteOptions = generateNoteOptions();
+      noteOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.midi;
+        option.textContent = opt.name;
+        if (opt.midi === note.midiNote) option.selected = true;
+        pitchSelect.appendChild(option);
+      });
+      modal.appendChild(createModalRow('Pitch', pitchSelect));
+      
+      // Channel
+      const channelInput = document.createElement('input');
+      channelInput.type = 'number';
+      channelInput.min = '0';
+      channelInput.max = '15';
+      channelInput.value = note.channel || 0;
+      channelInput.style.width = '60px';
+      channelInput.style.padding = '4px';
+      channelInput.style.background = '#1a1a1a';
+      channelInput.style.border = '1px solid #444';
+      channelInput.style.color = '#ccc';
+      channelInput.style.fontFamily = 'monospace';
+      modal.appendChild(createModalRow('Channel', channelInput));
+      
+      // Duration
+      const durationSelect = document.createElement('select');
+      durationSelect.style.width = '120px';
+      durationSelect.style.padding = '4px';
+      durationSelect.style.background = '#1a1a1a';
+      durationSelect.style.border = '1px solid #444';
+      durationSelect.style.color = '#ccc';
+      durationSelect.style.fontFamily = 'monospace';
+      
+      const durations = [
+        { value: 0.0625, label: '1/16 ♬' },
+        { value: 0.125, label: '1/8 ♪' },
+        { value: 0.25, label: '1/4 ♩' },
+        { value: 0.5, label: '1/2 𝅗𝅥' },
+        { value: 1, label: '1/1 𝅝' }
+      ];
+      
+      durations.forEach(dur => {
+        const option = document.createElement('option');
+        option.value = dur.value;
+        option.textContent = dur.label;
+        if (dur.value === (note.duration || 0.25)) option.selected = true;
+        durationSelect.appendChild(option);
+      });
+      modal.appendChild(createModalRow('Duration', durationSelect));
+      
+      // Velocity
+      const velocityInput = document.createElement('input');
+      velocityInput.type = 'number';
+      velocityInput.min = '1';
+      velocityInput.max = '127';
+      velocityInput.value = note.velocity || 100;
+      velocityInput.style.width = '60px';
+      velocityInput.style.padding = '4px';
+      velocityInput.style.background = '#1a1a1a';
+      velocityInput.style.border = '1px solid #444';
+      velocityInput.style.color = '#ccc';
+      velocityInput.style.fontFamily = 'monospace';
+      modal.appendChild(createModalRow('Velocity', velocityInput));
+      
+      // Appearance section
+      const appearanceHeading = document.createElement('h4');
+      appearanceHeading.textContent = 'Appearance';
+      modal.appendChild(appearanceHeading);
+      
+      // Note color
+      const colorInput = createColorInput(note.color);
+      modal.appendChild(createModalRow('Color', colorInput));
+      
+      // Note size
+      const sizeInput = document.createElement('input');
+      sizeInput.type = 'number';
+      sizeInput.min = '2';
+      sizeInput.max = '20';
+      sizeInput.value = note.size;
+      sizeInput.style.width = '60px';
+      sizeInput.style.padding = '4px';
+      sizeInput.style.background = '#1a1a1a';
+      sizeInput.style.border = '1px solid #444';
+      sizeInput.style.color = '#ccc';
+      sizeInput.style.fontFamily = 'monospace';
+      modal.appendChild(createModalRow('Size', sizeInput));
+      
+      // Note shape
+      const shapeSelect = document.createElement('select');
+      shapeSelect.style.width = '120px';
+      shapeSelect.style.padding = '4px';
+      shapeSelect.style.background = '#1a1a1a';
+      shapeSelect.style.border = '1px solid #444';
+      shapeSelect.style.color = '#ccc';
+      shapeSelect.style.fontFamily = 'monospace';
+      
+      const shapes = ['circle', 'square', 'diamond', 'triangle', 'hexagon', 'star'];
+      shapes.forEach(shape => {
+        const option = document.createElement('option');
+        option.value = shape;
+        option.textContent = shape.charAt(0).toUpperCase() + shape.slice(1);
+        if (shape === note.shape) option.selected = true;
+        shapeSelect.appendChild(option);
+      });
+      modal.appendChild(createModalRow('Shape', shapeSelect));
+      
+      // Buttons
+      const buttons = document.createElement('div');
+      buttons.className = 'modal-buttons';
+      
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'modal-button';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => {
+        document.body.removeChild(overlay);
+      };
+      
+      const applyBtn = document.createElement('button');
+      applyBtn.className = 'modal-button primary';
+      applyBtn.textContent = 'Apply';
+      applyBtn.onclick = () => {
+        colorInput.blur();
+        
+        // MIDI properties
+        note.midiNote = parseInt(pitchSelect.value);
+        note.noteName = midiToNoteName(note.midiNote);
+        note.channel = parseInt(channelInput.value);
+        note.duration = parseFloat(durationSelect.value);
+        note.velocity = parseInt(velocityInput.value);
+        
+        // Appearance properties
+        note.color = colorInput.value;
+        note.size = parseInt(sizeInput.value);
+        note.shape = shapeSelect.value;
+        
+        document.body.removeChild(overlay);
+        render();
+      };
+      
+      buttons.appendChild(cancelBtn);
+      buttons.appendChild(applyBtn);
+      modal.appendChild(buttons);
+      
+      overlay.appendChild(modal);
+      
+      // Click overlay background to close
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+        }
+      });
+      
+      document.body.appendChild(overlay);
+    }
+    
+    // Resize canvas to fit window
+    function resizeCanvas() {
+      const container = document.getElementById('container');
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      render();
+    }
+    
+    function drawGrid() {
+      ctx.strokeStyle = settings.gridColor;
+      ctx.lineWidth = 1 / zoom; // Keep line width consistent
+      
+      // Calculate visible world bounds
+      const topLeft = screenToWorld(0, 0);
+      const bottomRight = screenToWorld(canvas.width, canvas.height);
+      
+      // Extend grid beyond visible area
+      const startX = Math.floor(topLeft.x / settings.gridSpacing) * settings.gridSpacing;
+      const endX = Math.ceil(bottomRight.x / settings.gridSpacing) * settings.gridSpacing;
+      const startY = Math.floor(topLeft.y / settings.gridSpacing) * settings.gridSpacing;
+      const endY = Math.ceil(bottomRight.y / settings.gridSpacing) * settings.gridSpacing;
+      
+      // Vertical lines
+      for (let x = startX; x <= endX; x += settings.gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+        ctx.stroke();
+      }
+      
+      // Horizontal lines
+      for (let y = startY; y <= endY; y += settings.gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+        ctx.stroke();
+      }
+    }
+    
+    function drawNotes() {
+      // Draw links first (behind notes)
+      ctx.strokeStyle = settings.linkColor;
+      ctx.fillStyle = settings.linkColor;
+      ctx.lineWidth = 1.5;
+      
+      const arrowSize = 6;
+      
+      for (const note of notes.values()) {
+        for (const link of note.links) {
+          const targetKey = posKey(link.x, link.y);
+          const targetNote = notes.get(targetKey);
+          if (targetNote) {
+            // Check if there's a reverse link (bidirectional)
+            const hasReverseLink = targetNote.links.some(l => 
+              l.x === note.x && l.y === note.y
+            );
+            
+            let startX = note.x;
+            let startY = note.y;
+            let endX = targetNote.x;
+            let endY = targetNote.y;
+            
+            // If bidirectional, offset this link to the right of the line direction
+            if (hasReverseLink) {
+              const dx = endX - startX;
+              const dy = endY - startY;
+              const len = Math.sqrt(dx * dx + dy * dy);
+              
+              // Perpendicular offset (right side)
+              const offsetDist = 3;
+              const perpX = -dy / len * offsetDist;
+              const perpY = dx / len * offsetDist;
+              
+              startX += perpX;
+              startY += perpY;
+              endX += perpX;
+              endY += perpY;
+            }
+            
+            // Draw line
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            
+            // Draw arrow head
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const angle = Math.atan2(dy, dx);
+            const len = Math.sqrt(dx * dx + dy * dy);
+            
+            const targetSize = targetNote.size || settings.noteSize;
+            
+            // Position arrow at edge of target note circle, not center
+            const arrowX = startX + (dx / len) * (len - targetSize);
+            const arrowY = startY + (dy / len) * (len - targetSize);
+            
+            ctx.save();
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-arrowSize, -arrowSize / 2);
+            ctx.lineTo(-arrowSize, arrowSize / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+      
+      // Draw link being created
+      if (linkingFromNote && linkingMousePos) {
+        ctx.strokeStyle = settings.linkColor;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(linkingFromNote.x, linkingFromNote.y);
+        ctx.lineTo(linkingMousePos.x, linkingMousePos.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      
+      // Draw notes on top
+      for (const note of notes.values()) {
+        const shape = note.shape || settings.noteShape;
+        const color = note.color || settings.noteColor;
+        const size = note.size || settings.noteSize;
+        
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        
+        drawNoteShape(ctx, note.x, note.y, size, shape);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw outer outline for start notes
+        if (note.isStart) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          drawNoteShape(ctx, note.x, note.y, size + 3, shape);
+          ctx.stroke();
+        }
+        
+        // Highlight if this is the source of a link being created
+        if (linkingFromNote === note) {
+          ctx.strokeStyle = '#6a6a6a';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.strokeStyle = color; // Restore
+          ctx.lineWidth = 2;
+        }
+      }
+    }
+    
+    function render() {
+      // Clear
+      ctx.fillStyle = settings.backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Apply camera transform
+      ctx.save();
+      ctx.translate(panX, panY);
+      ctx.scale(zoom, zoom);
+      
+      drawGrid();
+      drawNotes();
+      drawAgents(); // Draw agents on top of notes
+      
+      ctx.restore();
+    }
+    
+    // Animation loop
+    function animate(timestamp) {
+      if (isPlaying) {
+        const deltaTime = lastFrameTime ? timestamp - lastFrameTime : 0;
+        lastFrameTime = timestamp;
+        
+        updateAgents(deltaTime);
+        render();
+      }
+      
+      requestAnimationFrame(animate);
+    }
+    
+    // Mouse wheel for zoom
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Zoom towards mouse position
+      const worldBefore = screenToWorld(mouseX, mouseY);
+      
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      zoom *= zoomFactor;
+      
+      // Clamp zoom
+      zoom = Math.max(0.1, Math.min(zoom, 5));
+      
+      const worldAfter = screenToWorld(mouseX, mouseY);
+      
+      // Adjust pan to keep mouse over same world point
+      panX += (worldAfter.x - worldBefore.x) * zoom;
+      panY += (worldAfter.y - worldBefore.y) * zoom;
+      
+      render();
+    });
+    
+    // Middle mouse button or space+drag for panning
+    canvas.addEventListener('mousedown', (e) => {
+      hideContextMenu();
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const world = screenToWorld(mouseX, mouseY);
+      
+      if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+        // Pan mode
+        e.preventDefault();
+        isPanning = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+      }
+      else if (editMode && e.button === 0 && e.ctrlKey) {
+        // Ctrl+click - start creating a link (only in edit mode)
+        const note = findNoteAt(world.x, world.y);
+        if (note) {
+          linkingFromNote = note;
+          linkingMousePos = world;
+          canvas.style.cursor = 'crosshair';
+        }
+      }
+      else if (editMode && e.button === 0) {
+        // Left click - check for note to drag (only in edit mode)
+        const note = findNoteAt(world.x, world.y);
+        if (note) {
+          draggedNote = note;
+          dragStartWorld = { x: world.x, y: world.y };
+          draggedNoteOriginalPos = { x: note.x, y: note.y };
+          canvas.style.cursor = 'grab';
+        }
+      }
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      
+      if (!editMode) return; // Disable context menus when not in edit mode
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const world = screenToWorld(mouseX, mouseY);
+      
+      // Check for link first (higher priority since they're harder to click)
+      const linkData = findLinkAt(world.x, world.y);
+      if (linkData) {
+        showLinkContextMenu(e.clientX, e.clientY, linkData);
+        return;
+      }
+      
+      // Then check for note
+      const note = findNoteAt(world.x, world.y);
+      if (note) {
+        showContextMenu(e.clientX, e.clientY, note);
+      }
+      // Empty space - do nothing (Setup button handles settings now)
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (isPanning) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        
+        panX += dx;
+        panY += dy;
+        
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        
+        render();
+      }
+      else if (draggedNote) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const world = screenToWorld(mouseX, mouseY);
+        
+        // Update note position
+        draggedNote.x = world.x;
+        draggedNote.y = world.y;
+        
+        render();
+      }
+      else if (linkingFromNote) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const world = screenToWorld(mouseX, mouseY);
+        
+        linkingMousePos = world;
+        render();
+      }
+    });
+    
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 1 || e.button === 0) {
+        if (isPanning) {
+          isPanning = false;
+        }
+        else if (linkingFromNote) {
+          // Complete link creation (only happens if edit mode was on)
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const world = screenToWorld(mouseX, mouseY);
+          
+          let targetNote = findNoteAt(world.x, world.y);
+          
+          // If no note at drop location, create one
+          if (!targetNote && targetNote !== linkingFromNote) {
+            const snapped = snapToGrid(world.x, world.y);
+            const key = posKey(snapped.x, snapped.y);
+            
+            if (!notes.has(key)) {
+              targetNote = createNote(snapped.x, snapped.y);
+              notes.set(key, targetNote);
+            }
+            else {
+              targetNote = notes.get(key);
+            }
+          }
+          
+          if (targetNote && targetNote !== linkingFromNote) {
+            // Add link from source to target
+            linkingFromNote.links.push({
+              x: targetNote.x,
+              y: targetNote.y
+            });
+          }
+          
+          linkingFromNote = null;
+          linkingMousePos = null;
+          render();
+        }
+        else if (draggedNote) {
+          // Snap to grid and update map key (only happens if edit mode was on)
+          const oldKey = posKey(draggedNoteOriginalPos.x, draggedNoteOriginalPos.y);
+          
+          const snapped = snapToGrid(draggedNote.x, draggedNote.y);
+          const newKey = posKey(snapped.x, snapped.y);
+          
+          // Update all links that point to this note's old position
+          for (const note of notes.values()) {
+            for (const link of note.links) {
+              if (link.x === draggedNoteOriginalPos.x && link.y === draggedNoteOriginalPos.y) {
+                link.x = snapped.x;
+                link.y = snapped.y;
+              }
+            }
+          }
+          
+          // Update the note's position
+          draggedNote.x = snapped.x;
+          draggedNote.y = snapped.y;
+          
+          // Update map
+          notes.delete(oldKey);
+          notes.set(newKey, draggedNote);
+          
+          draggedNote = null;
+          dragStartWorld = null;
+          draggedNoteOriginalPos = null;
+          
+          render();
+        }
+        else if (editMode && e.button === 0 && !e.shiftKey && !e.ctrlKey) {
+          // Left click on empty space - create new note (only in edit mode)
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const world = screenToWorld(mouseX, mouseY);
+          
+          const snapped = snapToGrid(world.x, world.y);
+          const key = posKey(snapped.x, snapped.y);
+          
+          if (!notes.has(key)) {
+            const note = createNote(snapped.x, snapped.y);
+            // Auto-set as start note if this is the first note
+            if (notes.size === 0) {
+              note.isStart = true;
+            }
+            notes.set(key, note);
+            render();
+          }
+        }
+        
+        canvas.style.cursor = editMode ? 'crosshair' : 'default';
+      }
+    });
+    
+    // Initial render
+    resizeCanvas();
+    
+    // Start animation loop
+    animate(0);
+    
+    // Initialize MIDI
+    initMIDI();
+    
+    // Resize canvas on window resize
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Click status light to retry connection
+    document.getElementById('status-light').addEventListener('click', () => {
+      if (!midi.connected) {
+        initMIDI();
+      }
+    });
+    
+    // System settings button
+    const settingsBtn = document.getElementById('system-settings-btn');
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showSettingsModal();
+    });
+    settingsBtn.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+    settingsBtn.addEventListener('mouseup', (e) => {
+      e.stopPropagation();
+    });
+    
+    // Edit mode button
+    const editModeBtn = document.getElementById('edit-mode-btn');
+    editModeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editMode = !editMode;
+      editModeBtn.classList.toggle('active', editMode);
+      editModeBtn.textContent = editMode ? '⊙' : '⊗';
+      canvas.style.cursor = editMode ? 'crosshair' : 'default';
+    });
+    editModeBtn.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+    editModeBtn.addEventListener('mouseup', (e) => {
+      e.stopPropagation();
+    });
+    
+    // BPM display
+    const bpmDisplay = document.getElementById('bpm-display');
+    const bpmValue = document.getElementById('bpm-value');
+    let bpmDragging = false;
+    let bpmDragStartX = 0;
+    let bpmDragStartValue = 0;
+    let editModeBeforeBPMDrag = false;
+    
+    bpmDisplay.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      bpmDragging = true;
+      bpmDragStartX = e.clientX;
+      bpmDragStartValue = settings.bpm;
+      bpmDisplay.style.cursor = 'ew-resize';
+      
+      // Temporarily disable edit mode while dragging
+      editModeBeforeBPMDrag = editMode;
+      editMode = false;
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (bpmDragging) {
+        const deltaX = e.clientX - bpmDragStartX; // Right = increase
+        const deltaBPM = Math.round(deltaX); // 1 pixel per BPM
+        let newBPM = bpmDragStartValue + deltaBPM;
+        
+        // Clamp between 40 and 300
+        newBPM = Math.max(40, Math.min(300, newBPM));
+        
+        settings.bpm = newBPM;
+        bpmValue.textContent = newBPM;
+      }
+    });
+    
+    window.addEventListener('mouseup', (e) => {
+      if (bpmDragging) {
+        bpmDragging = false;
+        bpmDisplay.style.cursor = 'ew-resize';
+        
+        // Restore edit mode
+        editMode = editModeBeforeBPMDrag;
+      }
+    });
+    
+    // Transport controls
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isPlaying = true;
+      isPaused = false;
+      playBtn.disabled = true;
+      pauseBtn.disabled = false;
+      stopBtn.disabled = false;
+      playBtn.classList.remove('active');
+      lastFrameTime = 0;
+      spawnAgentsFromStartNotes();
+    });
+    
+    pauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isPaused = !isPaused;
+      pauseBtn.classList.toggle('active', isPaused);
+      if (!isPaused) {
+        lastFrameTime = 0; // Reset timing when resuming
+      }
+    });
+    
+    stopBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isPlaying = false;
+      isPaused = false;
+      playBtn.disabled = false;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      pauseBtn.classList.remove('active');
+      agents.length = 0; // Clear all agents
+      render(); // Redraw without agents
+    });
+    
+    // Prevent transport button events from reaching canvas
+    [playBtn, pauseBtn, stopBtn].forEach(btn => {
+      btn.addEventListener('mousedown', (e) => e.stopPropagation());
+      btn.addEventListener('mouseup', (e) => e.stopPropagation());
+    });
+  </script>
+</body>
+</html>
